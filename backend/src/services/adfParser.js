@@ -1,6 +1,5 @@
 /**
  * Parse Atlassian Document Format (ADF) to extract text
- * Jira stores descriptions in ADF format
  */
 export class ADFParser {
   static parse(node) {
@@ -28,7 +27,6 @@ export class ADFParser {
     if (node.content && Array.isArray(node.content)) {
       const text = node.content.map(child => this.parse(child)).join('');
       
-      // Add formatting based on node type
       switch (node.type) {
         case 'paragraph':
           return text + '\n';
@@ -59,31 +57,50 @@ export class ADFParser {
     return '';
   }
 
-  /**
-   * Extract acceptance criteria section from parsed text
-   */
   static extractAcceptanceCriteria(text) {
     if (!text) return null;
     
+    const lowerText = text.toLowerCase();
+    
+    // Look for explicit "Acceptance Criteria" header
     const patterns = [
-      /acceptance criteria[:\s]*([\s\S]*?)(?=\n#{1,3}\s|\n---|$)/i,
+      // Standard header formats
+      /acceptance criteria[:\s]*\n?([\s\S]*?)(?=\n#{1,3}\s|\n---|\n\n\n|$)/i,
       /acceptance criteria[:\s]*([\s\S]*)/i,
-      /given[:\s]*([\s\S]*?)(?=when|then)/i,
-      /(?:^|\n)(?:ac|acceptance criteria)[:\s]*\n([\s\S]*?)(?=\n\n|\n#{1,3}\s|$)/i
+      
+      // Jira common format: h2 "Acceptance Criteria" followed by list
+      /(?:^|\n)#{1,2}\s*acceptance criteria\s*\n([\s\S]*?)(?=\n#{1,3}\s|\n---|$)/i,
+      
+      // AC abbreviation
+      /(?:^|\n)#{1,2}\s*ac\s*\n([\s\S]*?)(?=\n#{1,3}\s|\n---|$)/i,
+      
+      // Definition of Done section sometimes contains AC
+      /(?:^|\n)#{1,2}\s*definition of done\s*\n([\s\S]*?)(?=\n#{1,3}\s|\n---|$)/i,
     ];
     
     for (const pattern of patterns) {
       const match = text.match(pattern);
-      if (match && match[1].trim()) {
+      if (match && match[1].trim().length > 20) {
         return this.cleanText(match[1].trim());
       }
     }
     
-    // Fallback: look for Gherkin-style Given/When/Then
-    const gherkinPattern = /(?:given|when|then)[:\s].*/gi;
+    // Fallback: look for Gherkin-style Given/When/Then anywhere
+    const gherkinPattern = /(?:given|when|then|and|but)\s+[\w\s]+/gi;
     const gherkinMatches = text.match(gherkinPattern);
-    if (gherkinMatches && gherkinMatches.length > 0) {
+    if (gherkinMatches && gherkinMatches.length > 2) {
       return this.cleanText(gherkinMatches.join('\n'));
+    }
+    
+    // Last resort: if description is reasonably short, use it all
+    if (text.length > 50 && text.length < 2000) {
+      return this.cleanText(text);
+    }
+    
+    // Extract first meaningful paragraph as fallback
+    const firstPara = text.split(/\n\s*\n/)[0];
+    if (firstPara && firstPara.length > 50) {
+      return this.cleanText(firstPara);
     }
     
     return null;

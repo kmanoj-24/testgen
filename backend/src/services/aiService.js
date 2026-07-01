@@ -4,18 +4,17 @@ import { AppError } from '../utils/apiResponse.js';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const MAX_RETRIES = 2;
 
 if (!GEMINI_API_KEY) {
-  throw new Error('GEMINI_API_KEY is required. Get one at https://aistudio.google.com/app/apikey');
+  throw new Error('GEMINI_API_KEY is required');
 }
 
 const genAI = new GoogleGenAI({ 
   apiKey: GEMINI_API_KEY,
   httpOptions: { timeout: 300000 }
-  
 });
 
-// JSON Schema for guaranteed structured output
 const TEST_CASE_SCHEMA = {
   type: 'object',
   properties: {
@@ -25,10 +24,11 @@ const TEST_CASE_SCHEMA = {
         type: 'object',
         properties: {
           id: { type: 'string' },
+          requirement_ref: { type: 'string' },
           title: { type: 'string' },
           type: { 
             type: 'string', 
-            enum: ['Positive', 'Negative', 'Boundary', 'Edge', 'Security', 'Performance', 'Usability', 'Compatibility']
+            enum: ['Positive', 'Negative', 'Boundary', 'Edge', 'Security', 'Performance', 'Usability', 'API', 'Integration']
           },
           priority: { 
             type: 'string', 
@@ -36,9 +36,10 @@ const TEST_CASE_SCHEMA = {
           },
           preconditions: { type: 'string' },
           steps: { type: 'array', items: { type: 'string' } },
-          expected_result: { type: 'string' }
+          expected_result: { type: 'string' },
+          automation_candidate: { type: 'boolean' }
         },
-        required: ['id', 'title', 'type', 'priority', 'preconditions', 'steps', 'expected_result']
+        required: ['id', 'requirement_ref', 'title', 'type', 'priority', 'preconditions', 'steps', 'expected_result']
       }
     }
   },
@@ -48,16 +49,37 @@ const TEST_CASE_SCHEMA = {
 export class AIService {
   static async generateTestCases(ticketData) {
     try {
+      if (!ticketData || !ticketData.key) {
+        throw new AppError('Invalid ticket data: ticket object with key is required', 400);
+      }
+
       logger.info(`Generating test cases for ticket: ${ticketData.key}`);
 
-      // Generate in 2 batches to avoid token limits
-      const batch1 = await this.generateBatch(ticketData, 1, 'core');
-      const batch2 = await this.generateBatch(ticketData, 2, 'extended');
+      const content = this.buildTicketContext(ticketData);
 
-      const allTestCases = [...batch1, ...batch2];
+      if (!content || content.length < 50) {
+        throw new AppError(
+          `Ticket ${ticketData.key} has insufficient description/AC. Please ensure the ticket has a description or acceptance criteria.`, 
+          400
+        );
+      }
 
-      // Renumber IDs sequentially
-      const finalTestCases = allTestCases.map((tc, index) => ({
+      // FREE TIER: Sequential calls with delay to avoid 429
+      logger.info('Generating core test cases (batch 1/2)...');
+      const coreTests = await this.generateBatch(ticketData, content, 'core');
+
+      // Wait 12 seconds between calls (free tier: 5 req/min = 1 per 12s)
+      logger.info('Waiting 12s for rate limit cooldown...');
+      await this.sleep(12000);
+
+      logger.info('Generating extended test cases (batch 2/2)...');
+      const extendedTests = await this.generateBatch(ticketData, content, 'extended');
+
+      const allTestCases = [...coreTests, ...extendedTests];
+      const uniqueTestCases = this.deduplicateTestCases(allTestCases);
+      const prioritizedTestCases = this.prioritizeTestCases(uniqueTestCases);
+
+      const finalTestCases = prioritizedTestCases.map((tc, index) => ({
         ...tc,
         id: `${ticketData.key}-TC${String(index + 1).padStart(3, '0')}`
       }));
@@ -70,97 +92,165 @@ export class AIService {
         acceptanceCriteria: ticketData.acceptanceCriteria,
         model: MODEL,
         generatedAt: new Date().toISOString(),
+        totalCount: finalTestCases.length,
         testCases: finalTestCases
       };
 
     } catch (error) {
       logger.error(`AI generation failed: ${error.message}`);
-
-      if (error.status === 429) {
-        throw new AppError('Gemini rate limit exceeded. Free tier: 1,500 requests/day.', 429);
-      }
-      if (error.status === 401 || error.status === 403) {
-        throw new AppError('Gemini API key invalid or expired.', 401);
-      }
-
-      throw new AppError(`Failed to generate test cases: ${error.message}`, 500);
+      if (error instanceof AppError) throw error;
+      this.handleGeminiError(error);
     }
   }
 
-  static async generateBatch(ticketData, batchNum, batchType) {
-    const prompt = batchType === 'core' 
-      ? this.buildCorePrompt(ticketData)
-      : this.buildExtendedPrompt(ticketData);
+  static buildTicketContext(ticketData) {
+    const parts = [];
 
-    const response = await genAI.models.generateContent({
-      model: MODEL,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: TEST_CASE_SCHEMA,
-        temperature: 0.2,
-        maxOutputTokens: 8192,
-      },
-    });
+    if (ticketData.summary) {
+      parts.push(`USER STORY: ${ticketData.summary}`);
+    }
 
-    const rawOutput = response.text;
-    return this.parseTestCases(rawOutput, ticketData.key);
+    if (ticketData.acceptanceCriteria) {
+      parts.push(`ACCEPTANCE CRITERIA:
+${ticketData.acceptanceCriteria}`);
+    }
+
+    if (ticketData.description && ticketData.description !== ticketData.acceptanceCriteria) {
+      parts.push(`DESCRIPTION:
+${ticketData.description.substring(0, 3000)}`);
+    }
+
+    if (ticketData.labels?.length) {
+      parts.push(`LABELS: ${ticketData.labels.join(', ')}`);
+    }
+
+    if (ticketData.components?.length) {
+      parts.push(`COMPONENTS: ${ticketData.components.join(', ')}`);
+    }
+
+    if (ticketData.issueType) {
+      parts.push(`ISSUE TYPE: ${ticketData.issueType}`);
+    }
+
+    return parts.join('');
   }
 
-  static buildCorePrompt(ticketData) {
-    const ac = ticketData.acceptanceCriteria || ticketData.description || 'No acceptance criteria';
-    const shortAC = ac.length > 1500 ? ac.substring(0, 1500) + '...' : ac;
+  static async generateBatch(ticketData, fullContext, batchType) {
+    const prompt = this.buildPrompt(ticketData, fullContext, batchType);
 
-    return `Generate 20-25 CORE test cases for this Jira story. Focus on essential functional tests.
+    let lastError;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        logger.info(`Gemini ${batchType} attempt ${attempt}/${MAX_RETRIES} for ${ticketData.key}`);
 
-TICKET: ${ticketData.key} - ${ticketData.summary}
-AC: ${shortAC}
+        const response = await genAI.models.generateContent({
+          model: MODEL,
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: TEST_CASE_SCHEMA,
+            temperature: 0.1,
+            maxOutputTokens: 8192,
+          },
+        });
 
-COVERAGE (generate ALL of these):
-1. Happy Path / Positive: 8-10 cases (main success scenarios)
-2. Negative / Error: 6-8 cases (invalid inputs, errors, unauthorized)
-3. Boundary: 4-5 cases (min/max values, empty, special chars)
-4. Security: 3-4 cases (auth, injection, privilege)
+        const rawOutput = response.text;
+        const parsed = this.parseTestCases(rawOutput, ticketData.key);
+        logger.info(`Parsed ${parsed.length} test cases from ${batchType} batch`);
+        return parsed;
 
-EACH TEST CASE MUST HAVE:
-- id: TC001, TC002, etc.
-- title: Specific and actionable
+      } catch (error) {
+        lastError = error;
+        logger.warn(`Gemini ${batchType} attempt ${attempt} failed: ${error.message}`);
+
+        if (error.status === 429) {
+          const waitTime = error.message?.includes('retry') ? 60000 : 12000;
+          logger.info(`Rate limited. Waiting ${waitTime}ms before retry...`);
+          await this.sleep(waitTime);
+          if (attempt < MAX_RETRIES) continue;
+        }
+
+        if (error.status === 401 || error.status === 403) break;
+        if (attempt < MAX_RETRIES) await this.sleep(3000 * attempt);
+      }
+    }
+
+    // If all retries failed, return empty array instead of crashing
+    logger.error(`All retries failed for ${batchType}. Returning empty array.`);
+    return [];
+  }
+
+  static buildPrompt(ticketData, fullContext, batchType) {
+    if (batchType === 'core') {
+      return `You are a senior QA engineer. Generate 20-25 CORE test cases for this Jira story.
+
+=== STRICT RULES ===
+1. EVERY test case MUST be directly derived from the acceptance criteria below.
+2. DO NOT generate generic tests like "login works" or "page loads" unless explicitly required by the AC.
+3. Each test case MUST reference which specific AC requirement it covers in the "requirement_ref" field.
+4. Stay within the scope of the story. DO NOT invent features not mentioned.
+5. Mark "automation_candidate" as true for tests that can be easily automated.
+
+=== TICKET CONTEXT ===
+${fullContext}
+
+=== YOUR TASK ===
+Generate EXACTLY these test cases:
+- Positive / Happy Path: 8-10 cases (main success scenarios from AC)
+- Negative / Error: 6-8 cases (invalid inputs, errors, unauthorized from AC)
+- Boundary Value Analysis: 4-5 cases (min/max, empty, null, special chars from AC)
+- Security: 3-4 cases (auth, injection, privilege if mentioned in AC)
+
+=== OUTPUT FORMAT ===
+Return ONLY JSON. Each test case must include:
+- id: TC001, TC002...
+- requirement_ref: Quote the specific AC sentence this test verifies
+- title: Specific, actionable test title (max 120 chars)
 - type: Positive, Negative, Boundary, or Security
-- priority: Critical, High, Medium, or Low
+- priority: Critical, High, Medium, Low
 - preconditions: Setup needed
-- steps: 2-5 numbered steps
-- expected_result: Clear pass criteria
+- steps: 3-7 clear, numbered steps
+- expected_result: Clear pass criteria with specific values
+- automation_candidate: true or false
 
-Return ONLY JSON in this format:
-{"test_cases":[{"id":"TC001","title":"...","type":"Positive","priority":"High","preconditions":"...","steps":["step1","step2"],"expected_result":"..."}]}`;
-  }
+Example:
+{"test_cases":[{"id":"TC001","requirement_ref":"User can filter by date range","title":"Verify date range filter returns results within selected range","type":"Positive","priority":"High","preconditions":"User is logged in, test data exists for date range 2024-01-01 to 2024-01-31","steps":["Navigate to reports page","Click filter icon","Enter start date: 2024-01-01","Enter end date: 2024-01-31","Click Apply button"],"expected_result":"Only records between 2024-01-01 and 2024-01-31 are displayed. Total count matches expected.","automation_candidate":true}]}`;
+    }
 
-  static buildExtendedPrompt(ticketData) {
-    const ac = ticketData.acceptanceCriteria || ticketData.description || 'No acceptance criteria';
-    const shortAC = ac.length > 1500 ? ac.substring(0, 1500) + '...' : ac;
+    // batchType === 'extended'
+    return `You are a senior QA engineer. Generate 20-25 EXTENDED test cases for this Jira story.
 
-    return `Generate 20-25 EXTENDED test cases for this Jira story. Focus on edge cases, performance, and non-functional tests.
+=== STRICT RULES ===
+1. EVERY test case MUST be directly derived from the acceptance criteria below.
+2. DO NOT generate generic tests unrelated to this story.
+3. Each test case MUST reference which specific AC requirement it covers.
+4. Mark "automation_candidate" as true for tests that can be easily automated.
 
-TICKET: ${ticketData.key} - ${ticketData.summary}
-AC: ${shortAC}
+=== TICKET CONTEXT ===
+${fullContext}
 
-COVERAGE (generate ALL of these):
-1. Edge Cases: 8-10 cases (concurrent ops, race conditions, timeouts, failures)
-2. Performance: 5-6 cases (load, response time, memory, scalability)
-3. Usability: 4-5 cases (cross-browser, mobile, accessibility, UX)
-4. Compatibility: 4-5 cases (different OS, browsers, versions)
+=== YOUR TASK ===
+Generate EXACTLY these test cases:
+- Edge Cases: 5-6 cases (concurrent ops, race conditions, timeouts, failures from AC)
+- Performance: 5-6 cases (load, response time, memory, scalability if AC involves data volume)
+- Usability / UI: 4-5 cases (cross-browser, mobile, accessibility, UX if AC involves UI)
+- API: 5-6 cases (HTTP methods, status codes, validation, headers if feature involves APIs)
+- Integration: 4-5 cases (component interactions, database, third-party if AC involves multiple systems)
 
-EACH TEST CASE MUST HAVE:
-- id: TC001, TC002, etc.
-- title: Specific and actionable
-- type: Edge, Performance, Usability, or Compatibility
-- priority: Critical, High, Medium, or Low
+=== OUTPUT FORMAT ===
+Return ONLY JSON with:
+- id: TC001, TC002...
+- requirement_ref: Quote the specific AC sentence this test verifies
+- title: Specific, actionable test title
+- type: Edge, Performance, Usability, API, or Integration
+- priority: Critical, High, Medium, Low
 - preconditions: Setup needed
-- steps: 2-5 numbered steps
+- steps: 3-7 clear steps
 - expected_result: Clear pass criteria
+- automation_candidate: true or false
 
-Return ONLY JSON in this format:
-{"test_cases":[{"id":"TC001","title":"...","type":"Edge","priority":"High","preconditions":"...","steps":["step1","step2"],"expected_result":"..."}]}`;
+Example:
+{"test_cases":[{"id":"TC001","requirement_ref":"System handles 1000 concurrent users","title":"Verify system stability with 1000 concurrent filter requests","type":"Performance","priority":"High","preconditions":"Load test environment ready","steps":["Simulate 1000 concurrent users","Each user applies different date filter","Monitor for 5 minutes"],"expected_result":"Response time < 2s, no errors, CPU < 80%","automation_candidate":false}]}`;
   }
 
   static parseTestCases(rawOutput, ticketKey) {
@@ -171,18 +261,16 @@ Return ONLY JSON in this format:
         .replace(/```\s*$/i, '')
         .trim();
 
-      // Find JSON boundaries
       const jsonStart = cleanOutput.indexOf('{');
       const jsonEnd = cleanOutput.lastIndexOf('}');
 
       if (jsonStart === -1 || jsonEnd === -1) {
-        logger.error('No JSON boundaries found in output');
+        logger.error(`No JSON found in output for ${ticketKey}`);
         return [];
       }
 
       let jsonStr = cleanOutput.substring(jsonStart, jsonEnd + 1);
 
-      // Try to fix truncated JSON
       try {
         JSON.parse(jsonStr);
       } catch (e) {
@@ -200,18 +288,20 @@ Return ONLY JSON in this format:
       const parsed = JSON.parse(jsonStr);
 
       if (!parsed.test_cases || !Array.isArray(parsed.test_cases)) {
-        logger.error('No test_cases array found');
+        logger.error(`No test_cases array found for ${ticketKey}`);
         return [];
       }
 
       return parsed.test_cases.map((tc) => ({
         id: tc.id || 'TC000',
+        requirement_ref: tc.requirement_ref || 'General',
         title: tc.title || 'Untitled',
-        type: ['Positive', 'Negative', 'Boundary', 'Edge', 'Security', 'Performance', 'Usability', 'Compatibility'].includes(tc.type) ? tc.type : 'Positive',
+        type: ['Positive', 'Negative', 'Boundary', 'Edge', 'Security', 'Performance', 'Usability', 'Compatibility', 'API', 'Integration'].includes(tc.type) ? tc.type : 'Positive',
         priority: ['Critical', 'High', 'Medium', 'Low'].includes(tc.priority) ? tc.priority : 'Medium',
         preconditions: tc.preconditions || 'None',
         steps: Array.isArray(tc.steps) ? tc.steps : [tc.steps || 'No steps'],
         expected_result: tc.expected_result || 'No expected result',
+        automation_candidate: tc.automation_candidate !== undefined ? tc.automation_candidate : true,
         status: 'pending_review',
         approved: false,
         rejected: false,
@@ -220,10 +310,45 @@ Return ONLY JSON in this format:
       }));
 
     } catch (error) {
-      logger.error(`Parse error: ${error.message}`);
-      logger.error(`Raw output (first 500 chars): ${rawOutput.substring(0, 500)}`);
+      logger.error(`Parse error for ${ticketKey}: ${error.message}`);
+      logger.error(`Raw output: ${rawOutput.substring(0, 500)}`);
       return [];
     }
+  }
+
+  static deduplicateTestCases(testCases) {
+    const seen = new Set();
+    return testCases.filter(tc => {
+      const key = tc.title.toLowerCase().replace(/\s+/g, ' ').trim();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  static prioritizeTestCases(testCases) {
+    const priorityOrder = { 'Critical': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
+    const typeOrder = { 'Positive': 1, 'Negative': 2, 'Boundary': 3, 'Edge': 4, 'Security': 5, 'API': 6, 'Integration': 7, 'Performance': 8, 'Usability': 9 };
+
+    return testCases.sort((a, b) => {
+      const priorityDiff = (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+      if (priorityDiff !== 0) return priorityDiff;
+      return (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99);
+    });
+  }
+
+  static handleGeminiError(error) {
+    if (error.status === 429) {
+      throw new AppError(
+        'Gemini rate limit exceeded (free tier: 5 requests/minute). ' +
+        'Please wait 1 minute and retry, or upgrade to paid tier at https://ai.google.dev/pricing', 
+        429
+      );
+    }
+    if (error.status === 401 || error.status === 403) {
+      throw new AppError('Gemini API key invalid or expired.', 401);
+    }
+    throw new AppError(`Failed to generate test cases: ${error.message}`, 500);
   }
 
   static async healthCheck() {
@@ -237,5 +362,9 @@ Return ONLY JSON in this format:
     } catch (error) {
       return { status: 'unhealthy', model: MODEL, available: false, error: error.message };
     }
+  }
+
+  static sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }

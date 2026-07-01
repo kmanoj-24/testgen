@@ -12,15 +12,16 @@ const server = app.listen(PORT, HOST, () => {
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
-// Graceful shutdown
+server.timeout = 300000;
+server.keepAliveTimeout = 300000;
+server.headersTimeout = 305000;
+
 const gracefulShutdown = (signal) => {
   logger.info(`Received ${signal}. Starting graceful shutdown...`);
   server.close(() => {
     logger.info('Server closed. Process terminated.');
     process.exit(0);
   });
-  
-  // Force shutdown after 30s
   setTimeout(() => {
     logger.error('Forced shutdown due to timeout');
     process.exit(1);
@@ -29,13 +30,10 @@ const gracefulShutdown = (signal) => {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-// Unhandled errors
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught Exception:', err);
   process.exit(1);
 });
-
 process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled Rejection:', reason);
 });
