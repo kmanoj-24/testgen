@@ -13,8 +13,8 @@ export const useJira = () => {
     
     try {
       const response = await jiraApi.getTicket(ticketKey);
-      setTicket(response.data);
-      return response.data;
+      setTicket(response);
+      return response;
     } catch (err) {
       setError(err.message);
       return null;

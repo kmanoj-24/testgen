@@ -9,14 +9,13 @@ export class AIController {
    */
   static async generateTestCases(req, res, next) {
     try {
-      const { ticketKey } = req.body;
-      
-      // Fetch ticket from Jira
-      const ticket = await JiraService.getTicket(ticketKey);
-      
+      const { ticketKey, ticketData } = req.body || {};
+
+      const ticket = ticketData || await JiraService.getTicket(ticketKey);
+
       // Generate test cases via AI
       const result = await AIService.generateTestCases(ticket);
-      
+
       return ApiResponse.success(res, result, 'Test cases generated successfully');
     } catch (error) {
       next(error);

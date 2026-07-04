@@ -1,73 +1,81 @@
-import { 
-  ExternalLink, 
-  User, 
-  Calendar, 
-  Tag, 
-  CheckCircle2, 
+import {
+  ExternalLink,
+  User,
+  Clock,
+  Tag,
+  CheckCircle2,
   AlertCircle,
-  Clock
+  Wand2,
+  FileText,
 } from 'lucide-react';
-import { Button } from '../common/Button';
+import { Card, CardHeader, CardContent, CardFooter } from '../UI/Card';
+import { Badge } from '../UI/Badge';
+import { Button } from '../UI/Button';
+import { Tooltip } from '../UI/Tooltip';
 
 export const TicketCard = ({ ticket, onGenerate }) => {
-  const getStatusColor = (status) => {
-    const colors = {
-      'To Do': 'bg-gray-100 text-gray-700',
-      'In Progress': 'bg-blue-100 text-blue-700',
-      'Done': 'bg-green-100 text-green-700',
-      'In Review': 'bg-yellow-100 text-yellow-700'
+  const getStatusVariant = (status) => {
+    const map = {
+      'To Do': 'muted',
+      'In Progress': 'info',
+      'Done': 'success',
+      'In Review': 'warning',
     };
-    return colors[status] || 'bg-gray-100 text-gray-700';
+    return map[status] || 'muted';
   };
 
   const getPriorityColor = (priority) => {
-    const colors = {
-      'Highest': 'text-red-600',
-      'High': 'text-orange-600',
-      'Medium': 'text-yellow-600',
-      'Low': 'text-green-600',
-      'Lowest': 'text-gray-600'
+    const map = {
+      'Highest': 'text-danger',
+      'High': 'text-warning',
+      'Medium': 'text-info',
+      'Low': 'text-success',
+      'Lowest': 'text-foreground-muted',
     };
-    return colors[priority] || 'text-gray-600';
+    return map[priority] || 'text-foreground-muted';
   };
 
-  return (
-    <div className="card">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-100">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-mono font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded">
-                {ticket.key}
-              </span>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getStatusColor(ticket.status?.name)}`}>
-                {ticket.status?.name}
-              </span>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">{ticket.summary}</h3>
-          </div>
-          <a
-            href={ticket.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <ExternalLink className="h-5 w-5" />
-          </a>
-        </div>
-      </div>
+  const hasAC = !!ticket.acceptanceCriteria;
 
-      {/* Meta Info */}
-      <div className="px-6 py-3 bg-gray-50 border-b border-gray-100">
+  return (
+    <Card elevated className="overflow-hidden">
+      <CardHeader className="pb-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="primary" className="font-mono text-xs">
+                {ticket.key}
+              </Badge>
+              <Badge variant={getStatusVariant(ticket.status?.name)}>
+                {ticket.status?.name}
+              </Badge>
+            </div>
+            <h3 className="text-xl font-bold text-foreground leading-tight">
+              {ticket.summary}
+            </h3>
+          </div>
+          <Tooltip content="Open in Jira">
+            <a
+              href={ticket.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-lg hover:bg-secondary transition-colors text-foreground-subtle hover:text-foreground"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </Tooltip>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-6">
         <div className="flex flex-wrap gap-4 text-sm">
           {ticket.assignee && (
-            <div className="flex items-center gap-1.5 text-gray-600">
+            <div className="flex items-center gap-1.5 text-foreground-muted">
               <User className="h-4 w-4" />
               <span>{ticket.assignee.name}</span>
             </div>
           )}
-          <div className="flex items-center gap-1.5 text-gray-600">
+          <div className="flex items-center gap-1.5 text-foreground-muted">
             <Clock className="h-4 w-4" />
             <span>Updated {new Date(ticket.updated).toLocaleDateString()}</span>
           </div>
@@ -78,67 +86,66 @@ export const TicketCard = ({ ticket, onGenerate }) => {
             </span>
           </div>
           {ticket.issueType && (
-            <div className="flex items-center gap-1.5 text-gray-600">
+            <div className="flex items-center gap-1.5 text-foreground-muted">
               <Tag className="h-4 w-4" />
               <span>{ticket.issueType}</span>
             </div>
           )}
         </div>
-      </div>
 
-      {/* Description */}
-      {ticket.description && (
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h4 className="text-sm font-medium text-gray-900 mb-2">Description</h4>
-          <div className="text-sm text-gray-600 whitespace-pre-wrap bg-gray-50 rounded-lg p-3 max-h-48 overflow-y-auto">
-            {ticket.description}
-          </div>
-        </div>
-      )}
-
-      {/* Acceptance Criteria - THE KEY PART */}
-      <div className="px-6 py-4">
-        <div className="flex items-center gap-2 mb-3">
-          <CheckCircle2 className="h-5 w-5 text-green-600" />
-          <h4 className="text-sm font-semibold text-gray-900">Acceptance Criteria</h4>
-          {ticket.acceptanceCriteria ? (
-            <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-              Found
-            </span>
-          ) : (
-            <span className="text-xs text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">
-              Not Found
-            </span>
-          )}
-        </div>
-
-        {ticket.acceptanceCriteria ? (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
-              {ticket.acceptanceCriteria}
+        {ticket.description && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold text-foreground-muted uppercase tracking-wider">Description</h4>
+            <div className="text-sm text-foreground-muted whitespace-pre-wrap bg-secondary/50 rounded-xl p-4 max-h-48 overflow-y-auto scrollbar-thin leading-relaxed">
+              {ticket.description}
             </div>
-          </div>
-        ) : (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm text-yellow-800">
-              No acceptance criteria found in this ticket. 
-              The description will be used for test case generation.
-            </p>
           </div>
         )}
 
-        {/* Action Button */}
-        <div className="mt-4 flex justify-end">
-          <Button 
-            variant="primary" 
-            onClick={() => onGenerate?.(ticket.key)}
-            disabled={!ticket.acceptanceCriteria}
-            className={!ticket.acceptanceCriteria ? 'opacity-50' : ''}
-          >
-            🤖 Generate Test Cases
-          </Button>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className={`h-4 w-4 ${hasAC ? 'text-success' : 'text-warning'}`} />
+            <h4 className="text-xs font-semibold text-foreground-muted uppercase tracking-wider">Acceptance Criteria</h4>
+            {hasAC ? (
+              <Badge variant="success" className="text-[10px]">Found</Badge>
+            ) : (
+              <Badge variant="warning" className="text-[10px]">Not Found</Badge>
+            )}
+          </div>
+
+          {hasAC ? (
+            <div className="bg-success/5 border border-success/20 rounded-xl p-4">
+              <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                {ticket.acceptanceCriteria}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-warning/5 border border-warning/20 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <FileText className="h-4 w-4 text-warning mt-0.5" />
+                <p className="text-sm text-foreground-muted">
+                  No acceptance criteria found in this ticket. The description will be used for test case generation.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
-    </div>
+      </CardContent>
+
+      <CardFooter className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs text-foreground-muted">
+          <div className={`h-1.5 w-1.5 rounded-full ${hasAC ? 'bg-success' : 'bg-warning'}`} />
+          {hasAC ? 'Ready for AI generation' : 'Will use description as fallback'}
+        </div>
+        <Button
+          variant="primary"
+          onClick={() => onGenerate?.(ticket.key)}
+          disabled={!hasAC}
+          icon={Wand2}
+        >
+          Generate Test Cases
+        </Button>
+      </CardFooter>
+    </Card>
   );
 };

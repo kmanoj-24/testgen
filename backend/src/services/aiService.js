@@ -104,38 +104,36 @@ export class AIService {
   }
 
   static buildTicketContext(ticketData) {
-    const parts = [];
+  const parts = [];
 
-    if (ticketData.summary) {
-      parts.push(`USER STORY: ${ticketData.summary}`);
-    }
-
-    if (ticketData.acceptanceCriteria) {
-      parts.push(`ACCEPTANCE CRITERIA:
-${ticketData.acceptanceCriteria}`);
-    }
-
-    if (ticketData.description && ticketData.description !== ticketData.acceptanceCriteria) {
-      parts.push(`DESCRIPTION:
-${ticketData.description.substring(0, 3000)}`);
-    }
-
-    if (ticketData.labels?.length) {
-      parts.push(`LABELS: ${ticketData.labels.join(', ')}`);
-    }
-
-    if (ticketData.components?.length) {
-      parts.push(`COMPONENTS: ${ticketData.components.join(', ')}`);
-    }
-
-    if (ticketData.issueType) {
-      parts.push(`ISSUE TYPE: ${ticketData.issueType}`);
-    }
-
-    return parts.join('');
+  if (ticketData.summary) {
+    parts.push(`USER STORY: ${ticketData.summary}`);
   }
 
-  static async generateBatch(ticketData, fullContext, batchType) {
+  if (ticketData.acceptanceCriteria) {
+    parts.push(`ACCEPTANCE CRITERIA:\n${ticketData.acceptanceCriteria}`);
+  }
+
+  if (ticketData.description && ticketData.description !== ticketData.acceptanceCriteria) {
+    parts.push(`DESCRIPTION:\n${ticketData.description.substring(0, 3000)}`);
+  }
+
+  if (ticketData.labels?.length) {
+    parts.push(`LABELS: ${ticketData.labels.join(', ')}`);
+  }
+
+  if (ticketData.components?.length) {
+    parts.push(`COMPONENTS: ${ticketData.components.join(', ')}`);
+  }
+
+  if (ticketData.issueType) {
+    parts.push(`ISSUE TYPE: ${ticketData.issueType}`);
+  }
+
+  return parts.join('\n\n');  // <-- FIX: was ''
+}  
+
+static async generateBatch(ticketData, fullContext, batchType) {
     const prompt = this.buildPrompt(ticketData, fullContext, batchType);
 
     let lastError;
@@ -154,7 +152,20 @@ ${ticketData.description.substring(0, 3000)}`);
           },
         });
 
-        const rawOutput = response.text;
+        let rawOutput = response.text;
+        logger.info(`Gemini raw response for ${batchType}: ${rawOutput?.substring(0, 200)}...`);
+        if (!rawOutput && response.data) {
+          try {
+            rawOutput = Buffer.from(response.data, 'base64').toString('utf-8');
+          } catch (decodeError) {
+            logger.warn(`Failed to decode Gemini inline JSON data for ${ticketData.key} (${batchType}): ${decodeError.message}`);
+          }
+        }
+        if (!rawOutput) {
+          logger.warn(`Gemini returned no text or inline JSON data for ${ticketData.key} (${batchType})`);
+          return [];
+        }
+
         const parsed = this.parseTestCases(rawOutput, ticketData.key);
         logger.info(`Parsed ${parsed.length} test cases from ${batchType} batch`);
         return parsed;
@@ -176,7 +187,8 @@ ${ticketData.description.substring(0, 3000)}`);
     }
 
     // If all retries failed, return empty array instead of crashing
-    logger.error(`All retries failed for ${batchType}. Returning empty array.`);
+    logger.error(`All retries failed for ${batchType}.`);
+throw new AppError(`Failed to generate ${batchType} test cases after ${MAX_RETRIES} attempts. ${lastError?.message || ''}`, 500);
     return [];
   }
 

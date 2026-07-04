@@ -1,42 +1,317 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --background: 0 0% 100%;
+    --background-secondary: 210 20% 98%;
+    --background-tertiary: 210 15% 96%;
+    --foreground: 222 47% 11%;
+    --foreground-muted: 215 16% 47%;
+    --foreground-subtle: 215 20% 65%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 243 75% 59%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --border-strong: 214 20% 80%;
+    --input: 214 32% 91%;
+    --ring: 243 75% 59%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --background-secondary: 222 47% 8%;
+    --background-tertiary: 222 47% 10%;
+    --foreground: 210 20% 98%;
+    --foreground-muted: 215 20% 65%;
+    --foreground-subtle: 215 16% 47%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 20% 98%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 243 75% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 47% 12%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 222 47% 12%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 243 75% 65%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 160 84% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 89% 55%;
+    --info-foreground: 0 0% 100%;
+    --border: 217 33% 17%;
+    --border-strong: 217 33% 22%;
+    --input: 217 33% 17%;
+    --ring: 243 75% 65%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    @apply bg-primary/20 text-primary;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-border-strong;
   }
 }
 
 @layer components {
+  .surface {
+    @apply bg-card text-card-foreground rounded-xl border border-border shadow-soft transition-all duration-250;
+  }
+
+  .surface-hover {
+    @apply surface hover:shadow-card-hover hover:border-border-strong;
+  }
+
+  .surface-elevated {
+    @apply bg-card text-card-foreground rounded-xl border border-border shadow-elevated;
+  }
+
+  .surface-glass {
+    @apply rounded-xl border border-white/20 backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 dark:border-white/10 shadow-elevated;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98];
+  }
+
   .btn-primary {
-    @apply inline-flex items-center justify-center px-4 py-2 border border-transparent 
-           text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 
-           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 
-           transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn px-4 py-2.5 text-sm rounded-lg bg-primary text-primary-foreground shadow-glow hover:shadow-glow hover:brightness-110;
   }
-  
+
   .btn-secondary {
-    @apply inline-flex items-center justify-center px-4 py-2 border border-gray-300 
-           text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 
-           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 
-           transition-colors duration-200;
+    @apply btn px-4 py-2.5 text-sm rounded-lg bg-secondary text-secondary-foreground border border-border hover:bg-background-tertiary hover:border-border-strong;
   }
-  
-  .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden;
+
+  .btn-ghost {
+    @apply btn px-4 py-2.5 text-sm rounded-lg text-foreground-muted hover:text-foreground hover:bg-secondary;
   }
-  
-  .input-field {
-    @apply block w-full rounded-lg border-gray-300 shadow-sm 
-           focus:border-primary-500 focus:ring-primary-500 sm:text-sm
-           placeholder-gray-400;
+
+  .btn-danger {
+    @apply btn px-4 py-2.5 text-sm rounded-lg bg-danger text-danger-foreground shadow-glow-danger hover:brightness-110;
+  }
+
+  .btn-success {
+    @apply btn px-4 py-2.5 text-sm rounded-lg bg-success text-success-foreground shadow-glow-success hover:brightness-110;
+  }
+
+  .btn-outline {
+    @apply btn px-4 py-2.5 text-sm rounded-lg border border-border bg-transparent text-foreground hover:bg-secondary hover:border-border-strong;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+
+  .btn-icon {
+    @apply btn p-2 rounded-lg text-foreground-muted hover:text-foreground hover:bg-secondary;
+  }
+
+  .input {
+    @apply flex w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground shadow-sm transition-all duration-200 placeholder:text-foreground-subtle focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:ring-offset-background focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .input-error {
+    @apply input border-danger/50 focus:ring-danger/20 focus:border-danger;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors;
+  }
+
+  .badge-primary {
+    @apply badge bg-primary/10 text-primary border border-primary/20;
+  }
+
+  .badge-success {
+    @apply badge bg-success/10 text-success border border-success/20;
+  }
+
+  .badge-warning {
+    @apply badge bg-warning/10 text-warning border border-warning/20;
+  }
+
+  .badge-danger {
+    @apply badge bg-danger/10 text-danger border border-danger/20;
+  }
+
+  .badge-info {
+    @apply badge bg-info/10 text-info border border-info/20;
+  }
+
+  .badge-muted {
+    @apply badge bg-muted text-muted-foreground border border-border;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded-lg bg-muted;
+  }
+
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(90deg, transparent, hsl(var(--muted-foreground)/0.08), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  .status-dot {
+    @apply relative inline-flex h-2.5 w-2.5 rounded-full;
+  }
+
+  .status-dot::after {
+    content: '';
+    @apply absolute inset-0 rounded-full animate-ping opacity-75;
+  }
+
+  .status-dot-success {
+    @apply status-dot bg-success;
+  }
+  .status-dot-success::after {
+    @apply bg-success;
+  }
+
+  .status-dot-warning {
+    @apply status-dot bg-warning;
+  }
+  .status-dot-warning::after {
+    @apply bg-warning;
+  }
+
+  .status-dot-danger {
+    @apply status-dot bg-danger;
+  }
+  .status-dot-danger::after {
+    @apply bg-danger;
+  }
+
+  .tooltip {
+    @apply absolute z-50 px-2.5 py-1 text-xs font-medium rounded-md bg-foreground text-background shadow-elevated opacity-0 invisible transition-all duration-200 scale-95;
+  }
+
+  .tooltip[data-visible="true"] {
+    @apply opacity-100 visible scale-100;
+  }
+
+  .animate-stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .animate-stagger > *:nth-child(2) { animation-delay: 50ms; }
+  .animate-stagger > *:nth-child(3) { animation-delay: 100ms; }
+  .animate-stagger > *:nth-child(4) { animation-delay: 150ms; }
+  .animate-stagger > *:nth-child(5) { animation-delay: 200ms; }
+  .animate-stagger > *:nth-child(6) { animation-delay: 250ms; }
+  .animate-stagger > *:nth-child(7) { animation-delay: 300ms; }
+  .animate-stagger > *:nth-child(8) { animation-delay: 350ms; }
+
+  .animate-enter {
+    @apply opacity-0 animate-fade-in-up;
+  }
+
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .bg-gradient-radial {
+    background: radial-gradient(ellipse at top, hsl(var(--primary)/0.08), transparent 70%),
+                radial-gradient(ellipse at bottom, hsl(var(--accent)/0.05), transparent 70%);
+  }
+
+  .bg-gradient-mesh {
+    background: 
+      radial-gradient(at 40% 20%, hsl(var(--primary)/0.08) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, hsl(var(--accent)/0.06) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, hsl(var(--primary)/0.04) 0px, transparent 50%),
+      radial-gradient(at 80% 50%, hsl(var(--accent)/0.04) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsl(var(--primary)/0.06) 0px, transparent 50%);
+  }
+
+  .progress-bar {
+    @apply h-1.5 w-full overflow-hidden rounded-full bg-muted;
+  }
+
+  .progress-bar-fill {
+    @apply h-full rounded-full bg-primary transition-all duration-500 ease-out-expo;
+  }
+
+  .divider {
+    @apply h-px w-full bg-border;
+  }
+
+  .divider-vertical {
+    @apply w-px h-full bg-border;
   }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .animation-paused {
+    animation-play-state: paused;
+  }
+
+  .animation-running {
+    animation-play-state: running;
   }
 }

@@ -13,8 +13,8 @@ export const useAI = () => {
     
     try {
       const response = await aiApi.generateTestCases(ticketKey);
-      setResult(response.data);
-      return response.data;
+      setResult(response);
+      return response;
     } catch (err) {
       setError(err.message);
       return null;

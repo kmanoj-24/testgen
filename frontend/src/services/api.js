@@ -45,7 +45,12 @@ export const jiraApi = {
 };
 
 export const aiApi = {
-  generateTestCases: (ticketData) => api.post('/ai/generate', { ticketData }),
+  generateTestCases: (ticketKeyOrPayload) => {
+    const payload = typeof ticketKeyOrPayload === 'string'
+      ? { ticketKey: ticketKeyOrPayload }
+      : ticketKeyOrPayload;
+    return api.post('/ai/generate', payload);
+  },
   healthCheck: () => api.get('/ai/health')
 };
 
