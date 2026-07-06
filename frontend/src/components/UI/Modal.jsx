@@ -1,28 +1,25 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Button } from './Button';
 
-export const Modal = ({ isOpen, onClose, title, children, size = 'md', footer }) => {
-  const overlayRef = useRef(null);
-
+export const Modal = ({
+  isOpen,
+  onClose,
+  title,
+  description,
+  children,
+  footer,
+  size = 'md',
+}) => {
   useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = '';
-    };
+    const handleEsc = (e) => e.key === 'Escape' && onClose();
+    if (isOpen) document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   const sizes = {
-    sm: 'max-w-md',
+    sm: 'max-w-sm',
     md: 'max-w-lg',
     lg: 'max-w-2xl',
     xl: 'max-w-4xl',
@@ -30,27 +27,20 @@ export const Modal = ({ isOpen, onClose, title, children, size = 'md', footer })
   };
 
   return (
-    <div
-      ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
-      onClick={(e) => e.target === overlayRef.current && onClose()}
-    >
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
-      <div className={`relative w-full ${sizes[size]} bg-card border border-border rounded-2xl shadow-elevated animate-scale-in overflow-hidden`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="px-6 py-5 max-h-[70vh] overflow-y-auto scrollbar-thin">
-          {children}
-        </div>
-        {footer && (
-          <div className="px-6 py-4 border-t border-border bg-secondary/50 flex justify-end gap-2">
-            {footer}
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-background/60 backdrop-blur-sm" onClick={onClose} />
+      <div className={`relative w-full ${sizes[size]} bg-card rounded-lg border border-border shadow-xl animate-fade-in`}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div>
+            {title && <h3 className="text-sm font-semibold text-foreground">{title}</h3>}
+            {description && <p className="text-xs text-foreground-muted mt-0.5">{description}</p>}
           </div>
-        )}
+          <button onClick={onClose} className="p-1 rounded-md hover:bg-secondary text-foreground-muted hover:text-foreground transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="p-4">{children}</div>
+        {footer && <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted/30">{footer}</div>}
       </div>
     </div>
   );

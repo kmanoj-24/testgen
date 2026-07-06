@@ -1,98 +1,95 @@
-import { Ticket, FileCheck, Clock, AlertCircle, TrendingUp, Zap } from 'lucide-react';
-import { StatsCard } from '../components/Dashboard/StatsCard';
-import { QuickActions } from '../components/Dashboard/QuickActions';
-import { RecentActivity } from '../components/Dashboard/RecentActivity';
-import { Card, CardHeader, CardContent } from '../components/UI/Card';
+import { Activity, FileCheck, Clock, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { Card } from '../components/UI/Card';
 
-export const Dashboard = () => {
-  return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-in-up">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
-          <p className="text-sm text-foreground-muted mt-1">Welcome back. Here's what's happening with your test generation.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/20 text-success text-xs font-medium">
-            <div className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-            System Operational
+const stats = [
+  { label: 'Total Tickets', value: '0', trend: '+12%', up: true, icon: Activity },
+  { label: 'Test Cases', value: '0', trend: '+8%', up: true, icon: FileCheck },
+  { label: 'Pending Review', value: '0', trend: '0%', up: null, icon: Clock },
+  { label: 'Issues Found', value: '0', trend: '-3%', up: false, icon: AlertCircle },
+];
+
+const quickActions = [
+  { title: 'Fetch Tickets', desc: 'Import from Jira', href: '/tickets', icon: '🎫' },
+  { title: 'Generate', desc: 'AI test cases', href: '/tickets', icon: '✨' },
+  { title: 'Review', desc: 'Approve & edit', href: '/testcases', icon: '✓' },
+  { title: 'Workflow', desc: 'Automation', href: '/workflow', icon: '⚡' },
+];
+
+export const Dashboard = () => (
+  <div className="space-y-6 animate-fade-in">
+    {/* Header */}
+    <div className="flex items-end justify-between">
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Dashboard</h1>
+        <p className="text-sm text-foreground-muted mt-0.5">Overview of your test generation activity</p>
+      </div>
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/20">
+        <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
+        <span className="text-xs font-medium text-success">System Operational</span>
+      </div>
+    </div>
+
+    {/* Stats Grid */}
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {stats.map((stat) => (
+        <Card key={stat.label} className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="p-1.5 rounded-md bg-secondary border border-border">
+              <stat.icon className="h-4 w-4 text-foreground-muted" strokeWidth={1.5} />
+            </div>
+            {stat.trend && (
+              <div className={`flex items-center gap-1 text-xs font-medium ${stat.up === true ? 'text-success' : stat.up === false ? 'text-destructive' : 'text-foreground-muted'}`}>
+                {stat.up === true ? <TrendingUp className="h-3 w-3" /> : stat.up === false ? <TrendingDown className="h-3 w-3" /> : null}
+                {stat.trend}
+              </div>
+            )}
           </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard title="Total Tickets" value="0" icon={Ticket} color="primary" trend="up" trendValue="12%" delay={0} />
-        <StatsCard title="Test Cases Generated" value="0" icon={FileCheck} color="success" trend="up" trendValue="8%" delay={100} />
-        <StatsCard title="Pending Review" value="0" icon={Clock} color="warning" delay={200} />
-        <StatsCard title="Issues Found" value="0" icon={AlertCircle} color="danger" trend="down" trendValue="3%" delay={300} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Quick Actions</h2>
-          <QuickActions />
-        </div>
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Activity</h2>
-          <RecentActivity />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-primary" />
-              <h3 className="text-base font-semibold text-foreground">AI Generation Stats</h3>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-foreground-muted">Success Rate</span>
-                <span className="text-sm font-semibold text-foreground">98.5%</span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent w-[98.5%]" />
-              </div>
-              <div className="grid grid-cols-3 gap-4 pt-2">
-                <div className="text-center"><div className="text-lg font-bold text-foreground">0</div><div className="text-xs text-foreground-muted">This Week</div></div>
-                <div className="text-center"><div className="text-lg font-bold text-foreground">0</div><div className="text-xs text-foreground-muted">This Month</div></div>
-                <div className="text-center"><div className="text-lg font-bold text-foreground">0</div><div className="text-xs text-foreground-muted">All Time</div></div>
-              </div>
-            </div>
-          </CardContent>
+          <p className="text-2xl font-semibold text-foreground tabular-nums">{stat.value}</p>
+          <p className="text-xs text-foreground-muted mt-0.5 uppercase tracking-wide">{stat.label}</p>
         </Card>
+      ))}
+    </div>
 
-        <Card className="animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-success" />
-              <h3 className="text-base font-semibold text-foreground">Coverage Overview</h3>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                { label: 'Positive Cases', value: 0, total: 0, color: 'bg-success' },
-                { label: 'Negative Cases', value: 0, total: 0, color: 'bg-danger' },
-                { label: 'Boundary Cases', value: 0, total: 0, color: 'bg-warning' },
-                { label: 'Edge Cases', value: 0, total: 0, color: 'bg-primary' },
-              ].map((item) => (
-                <div key={item.label} className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-foreground-muted">{item.label}</span>
-                    <span className="font-medium text-foreground">{item.value}</span>
-                  </div>
-                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                    <div className={`h-full rounded-full ${item.color} transition-all duration-700`} style={{ width: item.total ? `${(item.value / item.total) * 100}%` : '0%' }} />
-                  </div>
+    {/* Content Grid */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Quick Actions */}
+      <div className="lg:col-span-2 space-y-3">
+        <h2 className="text-xs font-semibold text-foreground-muted uppercase tracking-wide">Quick Actions</h2>
+        <div className="grid grid-cols-2 gap-3">
+          {quickActions.map((action) => (
+            <a
+              key={action.title}
+              href={action.href}
+              className="card p-4 hover:shadow-md hover:border-border-strong transition-all group"
+            >
+              <div className="flex items-start gap-3">
+                <span className="text-xl">{action.icon}</span>
+                <div>
+                  <h3 className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{action.title}</h3>
+                  <p className="text-xs text-foreground-muted mt-0.5">{action.desc}</p>
                 </div>
-              ))}
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-semibold text-foreground-muted uppercase tracking-wide">Recent Activity</h2>
+          <span className="text-xs text-foreground-subtle">Last 24h</span>
+        </div>
+        <Card className="p-4">
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="p-2 rounded-lg bg-secondary border border-border mb-3">
+              <Clock className="h-5 w-5 text-foreground-muted" />
             </div>
-          </CardContent>
+            <p className="text-sm text-foreground-muted">No recent activity</p>
+            <p className="text-xs text-foreground-subtle mt-0.5">Start by fetching a Jira ticket</p>
+          </div>
         </Card>
       </div>
     </div>
-  );
-};
+  </div>
+);

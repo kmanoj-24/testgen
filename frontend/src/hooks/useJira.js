@@ -1,3 +1,5 @@
+// frontend/src/hooks/useJira.js
+// Keep original
 import { useState, useCallback } from 'react';
 import { jiraApi } from '../services/api.js';
 
@@ -6,13 +8,12 @@ export const useJira = () => {
   const [error, setError] = useState(null);
   const [ticket, setTicket] = useState(null);
 
-  const fetchTicket = useCallback(async (ticketKey) => {
+  const fetchTicket = useCallback(async (key) => {
     setLoading(true);
     setError(null);
-    setTicket(null);
     
     try {
-      const response = await jiraApi.getTicket(ticketKey);
+      const response = await jiraApi.getTicket(key);
       setTicket(response);
       return response;
     } catch (err) {
@@ -23,16 +24,17 @@ export const useJira = () => {
     }
   }, []);
 
-  const validateTicketKey = (key) => {
-    const pattern = /^[A-Z]+-\d+$/;
-    return pattern.test(key);
-  };
+  const reset = useCallback(() => {
+    setTicket(null);
+    setError(null);
+    setLoading(false);
+  }, []);
 
   return {
     ticket,
     loading,
     error,
     fetchTicket,
-    validateTicketKey
+    reset
   };
 };

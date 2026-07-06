@@ -1,25 +1,16 @@
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export const Loading = ({ message = 'Loading...', size = 'md', fullScreen = false }) => {
   const sizes = {
     sm: 'h-4 w-4',
-    md: 'h-8 w-8',
-    lg: 'h-12 w-12',
+    md: 'h-5 w-5',
+    lg: 'h-6 w-6',
   };
 
   const content = (
-    <div className="flex flex-col items-center justify-center gap-4">
-      <div className="relative">
-        <Loader2 className={`${sizes[size] || sizes.md} animate-spin text-primary`} />
-        <div className="absolute inset-0 animate-ping opacity-20">
-          <Sparkles className={`${sizes[size] || sizes.md} text-primary`} />
-        </div>
-      </div>
-      {message && (
-        <p className="text-sm text-foreground-muted font-medium animate-pulse-soft">
-          {message}
-        </p>
-      )}
+    <div className="flex flex-col items-center gap-2">
+      <Loader2 className={`${sizes[size]} animate-spin text-primary`} />
+      {message && <p className="text-xs text-foreground-muted">{message}</p>}
     </div>
   );
 
@@ -31,9 +22,5 @@ export const Loading = ({ message = 'Loading...', size = 'md', fullScreen = fals
     );
   }
 
-  return (
-    <div className="flex items-center justify-center py-12">
-      {content}
-    </div>
-  );
+  return <div className="flex items-center justify-center py-12">{content}</div>;
 };

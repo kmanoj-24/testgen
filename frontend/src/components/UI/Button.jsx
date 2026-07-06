@@ -17,19 +17,19 @@ export const Button = ({
     primary: 'btn-primary',
     secondary: 'btn-secondary',
     ghost: 'btn-ghost',
-    danger: 'btn-danger',
-    success: 'btn-success',
-    outline: 'btn-outline',
+    danger: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+    success: 'bg-success text-success-foreground hover:bg-success/90',
+    outline: 'border border-border bg-transparent text-foreground hover:bg-secondary',
   };
 
   const sizeClasses = {
-    sm: 'btn-sm',
-    md: '',
-    lg: 'btn-lg',
-    icon: 'btn-icon',
+    sm: 'h-7 px-2.5 text-xs',
+    md: 'h-9 px-4 text-sm',
+    lg: 'h-11 px-6 text-base',
+    icon: 'h-9 w-9',
   };
 
-  const classes = `${baseClasses[variant] || baseClasses.primary} ${sizeClasses[size] || ''} ${className}`;
+  const classes = `${baseClasses[variant] || baseClasses.primary} ${sizeClasses[size] || sizeClasses.md} ${className}`;
 
   return (
     <button

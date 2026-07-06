@@ -2,18 +2,18 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 
-export const Layout = () => {
+export function Layout() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="flex h-screen bg-background">
       <Sidebar />
-      <div className="lg:pl-72">
+      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300 ml-16">
         <Header />
-        <main className="py-6 px-4 sm:px-6 lg:px-8 min-h-[calc(100vh-4rem)]">
-          <div className="animate-fade-in-up">
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8">
+          <div className="max-w-6xl mx-auto">
             <Outlet />
           </div>
         </main>
       </div>
     </div>
   );
-};
+}
