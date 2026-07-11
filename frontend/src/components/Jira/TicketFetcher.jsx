@@ -9,7 +9,7 @@ import { Card } from '../UI/Card';
 import { TicketCard } from './TicketCard';
 import { TestCaseResult } from '../AI/TestCaseResult';
 
-export const TicketFetcher = () => {
+export const TicketFetcher = ({ onFetch }) => {  // ← accept onFetch prop
   const [ticketKey, setTicketKey] = useState('');
   const [inputError, setInputError] = useState('');
   const [showResults, setShowResults] = useState(false);
@@ -33,12 +33,19 @@ export const TicketFetcher = () => {
       return;
     }
 
-    await fetchTicket(key);
+    const fetchedTicket = await fetchTicket(key);
+    
+    // Call parent's onFetch if provided
+    if (onFetch && fetchedTicket) {
+      onFetch(fetchedTicket);
+    }
   };
 
-  const handleGenerate = async (key) => {
+  const handleGenerate = async () => {
+    if (!ticket) return;
     setShowResults(true);
-    await generateTestCases(key);
+    // ← Pass full ticket object, not just the key string
+    await generateTestCases(ticket);
   };
 
   const handleBack = () => {

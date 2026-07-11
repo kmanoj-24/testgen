@@ -1,17 +1,16 @@
-import { User, Calendar, Flag, Tag, ExternalLink } from 'lucide-react';
+import { User, Calendar, Flag, Tag, ExternalLink, Sparkles } from 'lucide-react';
 import { Badge } from '../UI/Badge';
 
-export const TicketCard = ({ ticket }) => {
+export const TicketCard = ({ ticket, onGenerate }) => {
   if (!ticket) return null;
 
-  // Map API fields to component variables
   const key = ticket.key;
-  const title = ticket.summary;           // API uses 'summary', not 'title'
-  const status = ticket.status?.name;      // object → string
-  const priority = ticket.priority?.name;  // object → string
+  const title = ticket.summary;
+  const status = ticket.status?.name;
+  const priority = ticket.priority?.name;
   const assignee = ticket.assignee?.displayName || 'Unassigned';
-  const updated = ticket.updated;          // may be undefined
-  const type = ticket.issueType;           // API uses 'issueType', not 'type'
+  const updated = ticket.updated;
+  const type = ticket.issueType;
 
   return (
     <div className="card-hover p-4">
@@ -27,7 +26,7 @@ export const TicketCard = ({ ticket }) => {
         {title}
       </h3>
 
-      <div className="flex flex-wrap items-center gap-4 text-xs text-foreground-muted">
+      <div className="flex flex-wrap items-center gap-4 text-xs text-foreground-muted mb-4">
         <span className="flex items-center gap-1.5">
           <User className="h-3.5 w-3.5" />
           {assignee}
@@ -47,6 +46,17 @@ export const TicketCard = ({ ticket }) => {
           {type}
         </span>
       </div>
+
+      {/* Generate Test Cases Button */}
+      {onGenerate && (
+        <button
+          onClick={onGenerate}
+          className="w-full mt-2 p-2.5 rounded-lg border-2 border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-all flex items-center justify-center gap-2 text-primary text-sm font-medium"
+        >
+          <Sparkles className="h-4 w-4" />
+          Generate Test Cases
+        </button>
+      )}
     </div>
   );
 };
